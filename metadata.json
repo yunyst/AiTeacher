@@ -1,0 +1,7 @@
+{
+  "name": " 长大互动教师",
+  "description": "一个交互式 Web 应用，使用由 AI驱动的对话式 AI 教师，增加黑板视频播放功能，能和同学互动。增加板书功能",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

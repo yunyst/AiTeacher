@@ -1,0 +1,424 @@
+User
+请描述一下课程脚本
+Gemini 2.5 Pro
+Ran for 19s
+Thought for 19 seconds
+chevron_right
+好的，很乐意为您说明！
+在当前的应用中，“课程脚本”是一个预先定义好的、结构化的课程计划。它不像传统的AI提示词，而更像一个电影剧本，精确地规定了AI导师在课程中每一步要说的话和要做的事。
+这个脚本的核心特点是：
+顺序执行的动作列表：整个课程被定义为一个动作（Action）的列表（数组）。应用会按照列表的顺序，一步一步地执行这些动作，来推动课程的进行。
+标准化的动作格式：每一个动作都是一个JSON对象，包含两个关键部分：type（类型）和 payload（内容）。
+两种基本动作类型：
+speech (语音)：这种类型的动作用于让AI导师说话。payload 中会包含具体的文本内容。
+code
+JSON
+{
+  "type": "speech",
+  "payload": { "text": "大家好！欢迎来到我们的课堂。" }
+}
+command (指令)：这种类型的动作用于控制应用界面，执行各种交互操作。payload 中会包含指令的名称 (name) 和参数 (args)。
+丰富的指令集：command 类型的动作可以实现多种功能，例如：
+show_pdf: 在黑板上显示一个PDF文件。
+show_video: 播放一个教学视频。
+present_choices: 向学生展示一道选择题，并等待学生作答。
+draw: 在黑板上绘制图形、公式或文字，以进行可视化讲解。
+complete_lesson: 标记课程结束并进入自由问答环节。
+通过这种方式，课程脚本确保了每一位学生都能获得一致、稳定且设计精良的教学体验。老师可以精确地控制教学流程，将讲解、多媒体展示和互动问答有机地结合起来。
+User
+请进一步说明各个command的具体用途和格式
+Gemini 2.5 Pro
+Ran for 12s
+Thought for 12 seconds
+chevron_right
+当然，非常乐意为您详细解释每个 command 的具体用途和格式。
+command 类型的动作是课程脚本的核心，它让AI导师能够超越简单的语言对话，直接操控应用界面，从而实现展示多媒体、进行互动问答、在黑板上绘图等丰富的教学功能。
+每一个 command 都遵循以下基本结构：
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "指令名称",
+    "args": { /* 参数对象 */ }
+  }
+}
+下面是各个具体指令的详细说明：
+1. show_pdf
+用途: 在应用的黑板区域显示一个PDF文件。
+参数 (args):
+url (string, 必需): PDF文件的公开访问链接。
+page (number, 可选, 默认: 1): 指定初始显示的页码。
+示例:
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "show_pdf",
+    "args": {
+      "url": "https://your-server.com/path/to/your-lesson.pdf",
+      "page": 1
+    }
+  }
+}
+2. goto_page
+用途: 跳转到当前已显示的PDF文件的指定页码。
+参数 (args):
+page (number, 必需): 要跳转到的目标页码。
+示例:
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "goto_page",
+    "args": {
+      "page": 3
+    }
+  }
+}
+3. show_video
+用途: 在黑板区域播放一个视频文件。
+参数 (args):
+url (string, 必需): 视频文件的公开访问链接（支持.mp4, .webm等标准格式）。
+示例:
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "show_video",
+    "args": {
+      "url": "https://your-server.com/path/to/your-lesson-video.mp4"
+    }
+  }
+}
+4. present_choices
+用途: 在界面下方显示一组选项按钮，供学生点击选择。这是实现互动问答的关键指令。
+参数 (args):
+options (string[], 必需): 一个包含所有选项文本的字符串数组。
+correctAnswer (string, 可选): 如果这是一个有标准答案的问题，在此处提供正确选项的文本。应用会根据学生的回答与此值是否匹配来判断对错，并执行后续不同的脚本分支。如果省略此参数，则认为这是一个开放性问题或调查，所有选项没有对错之分。
+示例 (有正确答案):
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "present_choices",
+    "args": {
+      "options": ["苹果", "香蕉", "橙子"],
+      "correctAnswer": "苹果"
+    }
+  }
+}
+示例 (开放性问题):
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "present_choices",
+    "args": {
+      "options": ["准备好了", "还没"]
+    }
+  }
+}
+5. draw
+用途: 在黑板上进行绘图，可以用来画几何图形、写公式、标注重点等。这是一个非常强大的可视化工具。
+参数 (args):
+operations (DrawingOperation[], 必需): 一个包含一系列绘图操作的数组。操作会按顺序执行。
+绘图操作 (DrawingOperation) 的类型:
+{ "type": "background", "color": "black" | "white" | "transparent" }
+改变整个黑板的背景颜色。设置为 transparent 可以让背景恢复透明，以显示下方的PDF或视频。
+{ "type": "clear" }
+清除画布上所有之前绘制的图形和文字，但不改变背景颜色。
+{ "type": "text", "text": "...", "x": 50, "y": 20, "fontSize": 24, "color": "#FFFF00" }
+在指定位置显示文本。支持 KaTeX 格式的数学公式。
+x, y 是中心点的百分比坐标 (0-100)。
+{ "type": "line", "x1": 10, "y1": 10, "x2": 90, "y2": 90, "lineWidth": 3, "color": "white" }
+画一条线。x1, y1, x2, y2 都是百分比坐标。
+{ "type": "rect", "x": 10, "y": 10, "width": 80, "height": 80, "fill": "rgba(0,0,255,0.5)", "color": "blue", "lineWidth": 2 }
+画一个矩形。x, y 是左上角坐标，width, height 是尺寸，均为百分比。
+fill 是填充颜色, color 是边框颜色。
+{ "type": "circle", "cx": 50, "cy": 50, "radius": 20, "fill": "red" }
+画一个圆形。cx, cy 是圆心坐标，radius 是半径，均为百分比。半径是相对于黑板较短边的百分比。
+draw 示例:
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "draw",
+    "args": {
+      "operations": [
+        { "type": "background", "color": "black" },
+        { "type": "clear" },
+        { "type": "rect", "x": 5, "y": 5, "width": 90, "height": 90, "color": "grey" },
+        { "type": "text", "text": "f(x) = x^2", "x": 50, "y": 20, "fontSize": 32, "color": "#00FF00" },
+        { "type": "line", "x1": 10, "y1": 50, "x2": 90, "y2": 50, "color": "cyan", "lineWidth": 2 }
+      ]
+    }
+  }
+}
+6. clear_blackboard
+用途: 彻底清空黑板，移除当前显示的PDF、视频以及所有draw指令绘制的内容。
+参数 (args):
+{} (空对象)
+示例:
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "clear_blackboard",
+    "args": {}
+  }
+}
+7. complete_lesson
+用途: 标记当前课程已完成。这主要用于后台的学生进度跟踪。
+参数 (args):
+{} (空对象)
+示例:
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "complete_lesson",
+    "args": {}
+  }
+}
+8. start_qa
+用途: 结束预设的课程脚本流程，切换到自由问答模式。在此之后，应用会将用户的输入直接发送给AI进行自由对话，而不再按脚本步骤执行。
+参数 (args):
+{} (空对象)
+示例:
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "start_qa",
+    "args": {}
+  }
+}
+User
+请详细说明一下显示公式的命令使用和技巧
+Gemini 2.5 Pro
+Ran for 18s
+Thought for 18 seconds
+chevron_right
+好的，非常乐意为您详细说明在课程脚本中显示公式的 draw 指令，并分享一些实用的技巧。
+在应用中，所有黑板上的可视化内容，包括公式、图形和文字，都是通过 draw 这个强大的指令来实现的。
+核心指令：draw 与 text 操作
+要在黑板上显示公式，您需要使用 draw 指令，并在其 operations 数组中添加一个类型为 text 的操作对象。
+1. 基本格式
+这是一个最基础的 text 操作的 JSON 结构：
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "draw",
+    "args": {
+      "operations": [
+        {
+          "type": "text",
+          "text": "您的公式或文本",
+          "x": 50,
+          "y": 50,
+          "fontSize": 24,
+          "color": "#FFFFFF"
+        }
+      ]
+    }
+  }
+}
+2. 参数详解
+"type": "text": 明确告诉系统这是一个文本/公式绘制操作。
+"text": "...": 这是最关键的部分。您需要在这里填入 KaTeX 格式 的数学公式字符串。
+"x": 50: 公式中心点的水平位置（横坐标）。使用0到100的百分比表示，50 代表水平居中。
+"y": 50: 公式中心点的垂直位置（纵坐标）。同样使用0到100的百分比表示，50 代表垂直居中。
+"fontSize": 24 (可选): 字体大小，单位是像素（px）。默认值约为16。建议根据公式复杂度和重要性调整。
+"color": "#FFFFFF" (可选): 字体颜色，使用十六进制颜色码。默认是白色。
+关键技术：KaTeX 格式
+本应用使用了一个名为 KaTeX 的强大JavaScript库来渲染数学公式。这意味着您在 "text" 字段中写的公式语法需要遵循 KaTeX 的规范，它与标准的 LaTeX 数学语法高度兼容。
+例如：
+二次方程求根公式: x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}
+质能方程: E = mc^2
+正态分布概率密度函数: f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{1}{2}(\frac{x-\mu}{\sigma})^2}
+使用技巧与最佳实践
+技巧 1：JSON 中的反斜杠 \ 需要转义
+这是最重要也是最容易出错的一点。在JSON字符串中，反斜杠 \ 是一个特殊字符，通常用于转义。因此，当您书写 LaTeX 公式时，每一个 \ 都必须写成 \\。
+错误示范 ❌
+code
+JSON
+"text": "f(x) = \frac{1}{\sigma\sqrt{2\pi}}"
+这会导致JSON解析错误或公式渲染失败。
+正确示范 ✅
+code
+JSON
+"text": "f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}}"
+技巧 2：组合绘制，让公式讲解更生动
+operations 是一个数组，这意味着您可以按顺序执行多个绘制操作。通过组合 text 和其他图形（如 rect, line, circle），可以创建出非常丰富的教学图示。
+示例：讲解勾股定理 a^2 + b^2 = c^2
+您可以先画一个黑色背景板，然后写上公式，并用一个矩形框突出显示它。
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "draw",
+    "args": {
+      "operations": [
+        { "type": "background", "color": "black" },
+        { "type": "clear" },
+        { 
+          "type": "text", 
+          "text": "a^2 + b^2 = c^2", 
+          "x": 50, 
+          "y": 50, 
+          "fontSize": 48, 
+          "color": "#00FF00" 
+        },
+        { 
+          "type": "rect", 
+          "x": 20, "y": 35, 
+          "width": 60, "height": 30, 
+          "color": "#FFFF00", 
+          "lineWidth": 3 
+        }
+      ]
+    }
+  }
+}
+效果：黑板上会先显示绿色的勾股定理公式，然后一个黄色的矩形框会画在公式周围，起到强调作用。
+技巧 3：分步展示与清除
+您可以利用多个 draw 指令来实现动画或分步讲解的效果。
+第一步：显示公式。
+第二步：增加一条线来标注公式的某个部分。
+第三步：使用 clear 操作清除标注，然后添加新的标注。
+最后：使用 { "type": "clear" } 和 { "type": "background", "color": "transparent" } 组合来彻底清空黑板，恢复到显示PDF或视频的状态。
+示例：清空黑板
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "draw",
+    "args": {
+      "operations": [
+        { "type": "clear" },
+        { "type": "background", "color": "transparent" }
+      ]
+    }
+  }
+}
+技巧 4：多行公式的处理
+如果您需要显示多行公式，最简单的方法是使用多个 text 操作，并为它们设置不同的 y 坐标。
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "draw",
+    "args": {
+      "operations": [
+        { "type": "text", "text": "\\text{能量：} E = mc^2", "x": 50, "y": 40, "fontSize": 28 },
+        { "type": "text", "text": "\\text{动量：} p = mv", "x": 50, "y": 60, "fontSize": 28 }
+      ]
+    }
+  }
+}
+通过灵活运用这些指令和技巧，您可以创建出动态、清晰且富有吸引力的公式讲解环节，极大地提升教学效果。
+User
+你提到的技巧3，难道clear命令可以去除部分内容吗？
+Gemini 2.5 Pro
+Ran for 15s
+Thought for 15 seconds
+chevron_right
+这是一个非常棒的问题，点出了这个绘图系统的一个核心工作机制！您观察得非常仔细。
+直接回答是：不，clear 指令本身不能去除部分内容。 它是一个“全有或全无”的操作，一旦执行，会清除掉当前黑板上所有由 draw 指令绘制的图形和文字。
+那么，技巧3中提到的“清除标注”是如何实现的呢？
+这背后是一种在计算机图形学中非常常见的技巧，我称之为 “重绘”（Redraw）。
+clear 指令的工作原理
+您可以把 draw 指令想象成一位画家接到的一组指令。黑板就是他的画布。
+当您发送第一个 draw 指令时，他会按照您的操作列表（operations）在空白的画布上画画。
+当您发送第二个 draw 指令时，他并不会在之前的画作上继续添加。相反，他会默认拿起一块新画布（或者把旧的擦干净），然后从头开始执行这第二个指令里的所有操作。
+{ "type": "clear" } 这个操作，就像是明确地告诉画家：“在开始画接下来的东西之前，请务必把画布彻底擦干净。”
+如何实现“部分清除”：重绘（Redraw）技巧
+既然我们无法只擦掉一部分，那么要实现“移除一个标注，同时保留其他内容”的效果，我们的思路必须是：
+先全部擦掉 (clear)。
+然后重新画上所有我们还想保留的内容。
+这就是“重绘”的核心。由于计算机执行这个过程非常快，在用户看来，效果就好像是只有那一部分内容被移除了。
+分步示例
+让我们以一个具体的例子来演示这个技巧：
+假设我们要讲解勾股定理 a^2 + b^2 = c^2，并依次高亮 a^2 和 b^2。
+第1步：显示公式
+AI导师说完话后，您发送第一个 draw 指令。
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "draw",
+    "args": {
+      "operations": [
+        { "type": "background", "color": "black" },
+        { "type": "text", "text": "a^2 + b^2 = c^2", "x": 50, "y": 50, "fontSize": 40 }
+      ]
+    }
+  }
+}
+结果：黑板上显示了公式。
+第2步：高亮 a^2
+AI导师说：“我们先来看 a 的平方。” 然后您发送第二个 draw 指令。注意，我们重绘了公式，并加上了一个红色的圆圈。
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "draw",
+    "args": {
+      "operations": [
+        // 虽然背景已经是黑色了，但为了保险起见可以再次声明
+        { "type": "background", "color": "black" },
+        // 清除上一步的所有内容 (虽然在这个例子里不加clear效果一样，但这是个好习惯)
+        { "type": "clear" },
+        // 重新画上公式
+        { "type": "text", "text": "a^2 + b^2 = c^2", "x": 50, "y": 50, "fontSize": 40 },
+        // 新增一个圆圈来高亮 a^2
+        { "type": "circle", "cx": 38, "cy": 50, "radius": 8, "color": "red", "lineWidth": 3 }
+      ]
+    }
+  }
+}
+结果：黑板上的公式不变，同时 a^2 部分被一个红圈圈了起来。
+第3步：移除对 a^2 的高亮，并高亮 b^2
+这是关键的一步！AI导师说：“接下来我们看 b 的平方。” 您发送第三个 draw 指令。
+code
+JSON
+{
+  "type": "command",
+  "payload": {
+    "name": "draw",
+    "args": {
+      "operations": [
+        { "type": "background", "color": "black" },
+        // 1. 先用 clear 把之前的所有东西（公式和红圈）都擦掉！
+        { "type": "clear" },
+        // 2. 再次重绘我们想要保留的公式
+        { "type": "text", "text": "a^2 + b^2 = c^2", "x": 50, "y": 50, "fontSize": 40 },
+        // 3. 画上新的高亮，这次是高亮 b^2
+        { "type": "circle", "cx": 50, "cy": 50, "radius": 8, "color": "yellow", "lineWidth": 3 }
+      ]
+    }
+  }
+}
+结果：用户看到的是，红圈消失了，同时 b^2 部分出现了一个黄圈。这个“消失”的效果，就是通过 clear + “重绘”实现的。
+总结
+所以，您的问题非常到位。clear 确实是清除全部内容。而实现动态、分步的标注和讲解效果，诀窍就在于将每一个步骤都视为一次对整个黑板的完全重绘。
+感谢您提出这个问题，这有助于更好地理解课程脚本的设计哲学！
+lightbulb
+Suggestions

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Math Tutor</title>
+    <!-- Fix: React DevTools throws "Invalid argument not valid semver ('' received)" 
+         when custom renderers (e.g., @react-three/fiber reconciler) register with 
+         an empty version string. This script patches the DevTools hook before any 
+         renderer registers, ensuring version is never empty. -->
+    <script>
+      (function() {
+        var _hook = window.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+
+        function patchHook(hook) {
+          if (!hook || hook.__semverPatched) return;
+          hook.__semverPatched = true;
+
+          // Patch the inject method to ensure valid version
+          if (typeof hook.inject === 'function') {
+            var origInject = hook.inject;
+            hook.inject = function(renderer) {
+              if (renderer && (!renderer.version || renderer.version === '')) {
+                renderer.version = '0.0.0';
+              }
+              return origInject.call(this, renderer);
+            };
+          }
+
+          // Patch any already-registered renderers
+          if (hook._renderers) {
+            hook._renderers.forEach(function(renderer) {
+              if (renderer && (!renderer.version || renderer.version === '')) {
+                renderer.version = '0.0.0';
+              }
+            });
+          }
+        }
+
+        // 1) Patch if hook already exists
+        patchHook(_hook);
+
+        // 2) Intercept future assignments via defineProperty
+        try {
+          Object.defineProperty(window, '__REACT_DEVTOOLS_GLOBAL_HOOK__', {
+            configurable: true,
+            get: function() { return _hook; },
+            set: function(newHook) {
+              _hook = newHook;
+              patchHook(newHook);
+            }
+          });
+        } catch (e) {
+          // defineProperty may fail; fall back to polling
+          var timer = setInterval(function() {
+            var h = window.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+            if (h && !h.__semverPatched) { patchHook(h); clearInterval(timer); }
+          }, 50);
+        }
+
+        // 3) Global safety net: suppress the specific semver error so it never crashes the app
+        window.addEventListener('error', function(e) {
+          if (e.message && e.message.indexOf('not valid semver') !== -1) {
+            e.preventDefault();
+            console.warn('[DevTools Patch] Suppressed semver validation error from React DevTools backend.');
+            return true;
+          }
+        });
+      })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* Comprehensive KaTeX styling for dark mode */
+        .katex {
+            color: white !important;
+            font-family: KaTeX_Main, "Times New Roman", serif;
+        }
+
+        /* KaTeX elements styling */
+        .katex .mathit {
+            font-family: KaTeX_Math, "Times New Roman", serif;
+        }
+
+        .katex .mathnormal {
+            font-family: KaTeX_Main, "Times New Roman", serif;
+        }
+
+        .katex .mathrm {
+            font-family: KaTeX_Main, "Times New Roman", serif;
+        }
+
+        .katex .mathbf {
+            font-family: KaTeX_Main, "Times New Roman", serif;
+            font-weight: bold;
+        }
+
+        .katex .mathbb {
+            font-family: KaTeX_AMS, "Times New Roman", serif;
+        }
+
+        .katex .mathcal {
+            font-family: KaTeX_Caligraphic, "Times New Roman", serif;
+        }
+
+        .katex .mathfrak {
+            font-family: KaTeX_Fraktur, "Times New Roman", serif;
+        }
+
+        .katex .mathscr {
+            font-family: KaTeX_Script, "Times New Roman", serif;
+        }
+
+        .katex .mathsf {
+            font-family: KaTeX_SansSerif, sans-serif;
+        }
+
+        .katex .mathtt {
+            font-family: KaTeX_Typewriter, monospace;
+        }
+
+        /* Ensure proper text rendering */
+        .katex .text {
+            font-family: KaTeX_Main, "Times New Roman", serif;
+        }
+
+        /* Handle inline and display math differently */
+        .katex .mord {
+            color: white !important;
+        }
+
+        .katex .mop {
+            color: white !important;
+        }
+
+        .katex .mbin {
+            color: white !important;
+        }
+
+        .katex .mrel {
+            color: white !important;
+        }
+
+        .katex .mopen {
+            color: white !important;
+        }
+
+        .katex .mclose {
+            color: white !important;
+        }
+
+        .katex .mpunct {
+            color: white !important;
+        }
+
+        .katex .minner {
+            color: white !important;
+        }
+
+        /* Error styling */
+        .katex-error {
+            color: #ff6b6b !important;
+            border: 1px solid #ff6b6b;
+            padding: 2px 4px;
+            border-radius: 3px;
+            background-color: rgba(255, 107, 107, 0.1);
+        }
+
+        /* Loading state styling */
+        .katex-loading {
+            color: #a0a0a0 !important;
+            font-style: italic;
+        }
+
+        /* Fallback styling */
+        .katex-fallback {
+            color: #ffa500 !important;
+            font-family: "Courier New", monospace;
+            background-color: rgba(255, 165, 0, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+    <link rel="stylesheet" href="/index.css">
+  </head>
+  <body class="bg-slate-900">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
