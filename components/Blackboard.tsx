@@ -304,7 +304,7 @@ export const Blackboard: React.FC<BlackboardProps> = ({ content, drawingState, o
           controls 
           autoPlay={!isPaused}
           onEnded={onVideoEnded}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-contain bg-black"
         />
       )}
       
