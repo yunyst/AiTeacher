@@ -136,10 +136,11 @@ export interface CourseCategory {
 
 export interface Profile {
   id: string; // uuid from auth.users
-  role: 'student' | 'teacher';
+  role: 'student' | 'teacher' | 'admin';
   email?: string; // User's email, optional for backwards compatibility
   student_id?: string; // 学号（学生注册时填写，不可修改）
   student_name?: string; // 姓名（学生注册时填写，不可修改）
+  class_number?: string; // 班号（学生注册时填写，可选，不可修改）
 }
 
 export interface LessonProgress {

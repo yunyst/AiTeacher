@@ -5,6 +5,7 @@ import type { Profile } from './types';
 import { Auth } from './components/Auth';
 import { StudentApp } from './components/StudentApp';
 import { TeacherApp } from './components/TeacherApp';
+import { AdminPanel } from './components/AdminPanel';
 
 
 const App: React.FC = () => {
@@ -44,7 +45,7 @@ const App: React.FC = () => {
         try {
           const { data, error, status } = await supabase
             .from('profiles')
-            .select(`role, email, student_id, student_name`)
+            .select(`role, email, student_id, student_name, class_number`)
             .eq('id', session.user.id)
             .single();
 
@@ -90,6 +91,10 @@ const App: React.FC = () => {
 
   if (!session) {
     return <Auth />;
+  }
+
+  if (profile?.role === 'admin') {
+    return <AdminPanel session={session} profile={profile} />;
   }
 
   if (profile?.role === 'teacher') {

@@ -33,6 +33,7 @@ import { Blackboard } from "./Blackboard";
 import * as pdfjsLib from "pdfjs-dist";
 import { parseLessonScript } from "../lessons/iot/registry";
 import { QuizCard, type QuizPayload } from "./QuizCard";
+import { ChangePasswordModal } from "./ChangePasswordModal";
 import {
   fetchStudentLessonRecord,
   submitQuizAttempt,
@@ -79,6 +80,7 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
   const [showAvatarCreator, setShowAvatarCreator] = useState(false);
   const [isCourseSelectorOpen, setIsCourseSelectorOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isHistoryVisible, setIsHistoryVisible] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState(
     () => localStorage.getItem(AVATAR_STORAGE_KEY) || DEFAULT_AVATAR_URL,
@@ -1702,6 +1704,9 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
       {isHelpModalOpen && (
         <HelpModal onClose={() => setIsHelpModalOpen(false)} />
       )}
+      {isChangePasswordModalOpen && (
+        <ChangePasswordModal onClose={() => setIsChangePasswordModalOpen(false)} />
+      )}
       <CourseSelector
         isOpen={isCourseSelectorOpen}
         onClose={() => setIsCourseSelectorOpen(false)}
@@ -1908,6 +1913,12 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
                     </div>
                     <div className="flex items-center space-x-2">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                      </svg>
+                      <span className="text-xs text-slate-300">班号：{profile?.class_number || "未设置"}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
                       </svg>
                       <span className="text-xs text-slate-300">学号：{profile?.student_id || "未设置"}</span>
@@ -1919,6 +1930,17 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
                       </svg>
                       <span className="text-xs text-slate-300">身份：{profile?.role === 'student' ? '学生' : profile?.role === 'teacher' ? '教师' : '未知'}</span>
                     </div>
+                  </div>
+                  <div className="pt-2 border-t border-slate-600">
+                    <button
+                      onClick={() => setIsChangePasswordModalOpen(true)}
+                      className="w-full px-3 py-2 text-sm text-cyan-400 hover:bg-slate-700 rounded-md transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>修改密码</span>
+                    </button>
                   </div>
                 </div>
               </div>
