@@ -400,8 +400,6 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
     speechTimeoutRef.current = null;
   }
 
-  if (systemStatusRef.current !== "playing") return;
-  setTextToSpeak("");
     if (systemStatusRef.current !== "playing") return;
     setTextToSpeak("");
 

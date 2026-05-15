@@ -57,6 +57,7 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
     // 课程删除相关状态
     const [categories, setCategories] = useState<CourseCategory[]>([]);
     const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+    const [isDeletingCourse, setIsDeletingCourse] = useState(false);
     const [expandedCategories, setExpandedCategories] = useState<ExpandedCategories>({});
     
     // 确认对话框相关状态
@@ -108,12 +109,13 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
         const confirmed = window.confirm(`确定要删除课程「${lessonTitle}」吗？此操作不可撤销！`);
         if (!confirmed) return;
 
+        setIsDeletingCourse(true);
         try {
             const { error } = await supabase
                 .from('lessons')
                 .delete()
                 .eq('id', lessonId);
-            
+
             if (error) {
                 alert('删除课程失败: ' + error.message);
             } else {
@@ -123,6 +125,8 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
         } catch (error) {
             console.error('删除课程失败:', error);
             alert('删除课程失败');
+        } finally {
+            setIsDeletingCourse(false);
         }
     };
 
@@ -133,12 +137,13 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
         );
         if (!confirmed) return;
 
+        setIsDeletingCourse(true);
         try {
             const { error } = await supabase
                 .from('course_categories')
                 .delete()
                 .eq('id', categoryId);
-            
+
             if (error) {
                 alert('删除分类失败: ' + error.message);
             } else {
@@ -148,6 +153,8 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
         } catch (error) {
             console.error('删除分类失败:', error);
             alert('删除分类失败');
+        } finally {
+            setIsDeletingCourse(false);
         }
     };
 
@@ -365,6 +372,7 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
             if (jsonData.length < 2) {
                 alert('Excel 至少需要包含表头行和一行数据');
                 setIsImporting(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
                 return;
             }
 
@@ -385,6 +393,7 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
             if (studentIdIndex === -1 || studentNameIndex === -1) {
                 alert('表头中缺少"学号"或"姓名"列，请检查 Excel 格式');
                 setIsImporting(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
                 return;
             }
 
@@ -412,6 +421,7 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
             if (students.length === 0) {
                 alert('未找到有效的学生数据，请检查学号和姓名是否填写');
                 setIsImporting(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
                 return;
             }
 
@@ -1295,12 +1305,13 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
                                                                 <p className="text-sm text-white/50">{category.lessons?.length || 0} 个课程</p>
                                                             </div>
                                                         </div>
-                                                        <button 
+                                                        <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 handleDeleteCategory(category.id, category.name);
                                                             }}
-                                                            className="px-3 py-2 text-sm rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-all flex items-center gap-2"
+                                                            disabled={isDeletingCourse}
+                                                            className="px-3 py-2 text-sm rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1323,9 +1334,10 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
                                                                             <p className="text-xs text-white/50">{lesson.description}</p>
                                                                         </div>
                                                                     </div>
-                                                                    <button 
+                                                                    <button
                                                                         onClick={() => handleDeleteLesson(lesson.id, lesson.title)}
-                                                                        className="p-2 rounded-lg hover:bg-red-500/10 text-white/60 hover:text-red-400 transition-colors"
+                                                                        disabled={isDeletingCourse}
+                                                                        className="p-2 rounded-lg hover:bg-red-500/10 text-white/60 hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                                     >
                                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
