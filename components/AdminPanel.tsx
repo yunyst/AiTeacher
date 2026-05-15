@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../services/supabaseClient';
 import type { CourseCategory, Lesson } from '../types';
@@ -60,6 +60,7 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
     const [expandedCategories, setExpandedCategories] = useState<ExpandedCategories>({});
     
     // 确认对话框相关状态
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [showImportConfirm, setShowImportConfirm] = useState(false);
     const [importConfirmData, setImportConfirmData] = useState<StudentInfo[]>([]);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -418,10 +419,13 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
             setImportConfirmData(students);
             setShowImportConfirm(true);
             setIsImporting(false);
+            // 重置文件输入，以便再次选择同一文件时也能触发 onChange
+            if (fileInputRef.current) fileInputRef.current.value = '';
         } catch (error) {
             console.error('导入错误:', error);
             alert(`导入失败: ${error instanceof Error ? error.message : '未知错误'}`);
             setIsImporting(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -796,6 +800,7 @@ export const AdminPanel: React.FC<{ session: any; profile: any }> = ({ session, 
                                             </svg>
                                             选择 Excel 文件
                                             <input
+                                                ref={fileInputRef}
                                                 type="file"
                                                 accept=".xls,.xlsx"
                                                 onChange={handleFileUpload}

@@ -17,8 +17,6 @@ export function parseLessonScript(systemPrompt: string): AIAction[] {
   
   if (!systemPrompt || !systemPrompt.trim()) return [];
   try {
-  // console.log("把u素东北白酒开车呢检查",systemPrompt)
-  // console.log("wdefrgthgdfsjikmwenrfh")
     
     const parsed = JSON.parse(systemPrompt);
     if (Array.isArray(parsed)) return parsed as AIAction[];

@@ -61,6 +61,7 @@ interface StudentAppProps {
 }
 
 export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
+  const speechTimeoutRef = useRef<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [messages, setMessages] = usePersistentState<Message[]>(
     MESSAGES_STORAGE_KEY,
@@ -201,34 +202,18 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
     setSystemStatus("paused");
   };
 
-  // const resumeLesson = () => {
-  //   // Always re-process the current action when resuming.
-  //   // This fixes: tab switch desync (browser cancels speech/video but status stays 'playing'),
-  //   // and refresh stuck issues where nothing is actually playing.
-  //   needsProcessOnResumeRef.current = true;
 
-  //   // Force the script-driver useEffect to re-run by flipping status.
-  //   setSystemStatus('paused'); // briefly set paused (may already be)
-  //   // Use setTimeout to ensure the state transition is detected by the useEffect
-  //   setTimeout(() => setSystemStatus('playing'), 0);
-  // };
   const resumeLesson = () => {
-    // 🔧 修复：利用用户点击手势激活音频上下文，绕过自动播放限制
-    const dummyUtterance = new SpeechSynthesisUtterance("");
-    dummyUtterance.volume = 0;
-    window.speechSynthesis.cancel(); // 清理残留状态
-    window.speechSynthesis.speak(dummyUtterance); // 激活音频许可
+  // 用当前按钮点击的手势激活音频上下文
+  const dummyUtterance = new SpeechSynthesisUtterance("");
+  dummyUtterance.volume = 0;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(dummyUtterance);
 
-    // 如果语音合成器处于暂停状态，则恢复
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    }
-
-    // 原有恢复逻辑
-    needsProcessOnResumeRef.current = true;
-    setSystemStatus("paused");
-    setTimeout(() => setSystemStatus("playing"), 0);
-  };
+  // 直接设置为 playing，利用同步状态变化，AudioContext 可能被激活
+  needsProcessOnResumeRef.current = true;
+  setSystemStatus("playing");
+};
 
   useEffect(() => {
     if (systemStatus === "paused") {
@@ -409,6 +394,14 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
   );
 
   const handleSpeechEnd = useCallback(() => {
+    // 清除语音超时定时器
+  if (speechTimeoutRef.current) {
+    clearTimeout(speechTimeoutRef.current);
+    speechTimeoutRef.current = null;
+  }
+
+  if (systemStatusRef.current !== "playing") return;
+  setTextToSpeak("");
     if (systemStatusRef.current !== "playing") return;
     setTextToSpeak("");
 
@@ -495,34 +488,51 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
       let shouldAdvance = true;
       let advanceDelay = 1000;
 
-      if (action.type === "speech") {
-        const speech = action.payload.text;
-        const aiMessage: Message = {
-          id: crypto.randomUUID(),
-          role: "model",
-          content: speech.replace(/\n/g, "\n"),
-        };
+      // processScriptAction 内部的 case "speech":
+if (action.type === "speech") {
+  // 每次开始新语音时重置取消标记，防御其他路径遗留的标记
+  speechCancelledRef.current = false;
+  const speech = action.payload.text;
+  const aiMessage: Message = {
+    id: crypto.randomUUID(),
+    role: "model",
+    content: speech.replace(/\n/g, "\n"),
+  };
 
-        // BUGFIX: Prevent duplicate messages on state change
-        const lastMessage = messages[messages.length - 1];
-        if (
-          lastMessage?.role !== "model" ||
-          lastMessage?.content !== aiMessage.content
-        ) {
-          setMessages((prev) => [...prev, aiMessage]);
-        }
+  const lastMessage = messages[messages.length - 1];
+  if (
+    lastMessage?.role !== "model" ||
+    lastMessage?.content !== aiMessage.content
+  ) {
+    setMessages((prev) => [...prev, aiMessage]);
+  }
 
-        const sentences = speech.split("\n").filter((s) => s.trim() !== "");
-        if (sentences.length > 0) {
-          sentenceQueueRef.current = sentences.slice(1);
-          setTextToSpeak(sentences[0]);
-          setCaptionText(sentences[0]);
-        } else {
-          handleSpeechEnd();
-        }
+  const sentences = speech.split("\n").filter((s) => s.trim() !== "");
+  if (sentences.length > 0) {
+    sentenceQueueRef.current = sentences.slice(1);
+    setTextToSpeak(sentences[0]);
+    setCaptionText(sentences[0]);
 
-        shouldAdvance = false;
-      } else if (action.type === "command") {
+    // 清除之前的超时
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+    }
+    // 设置 15 秒超时，防止 TTS 无响应
+    speechTimeoutRef.current = window.setTimeout(() => {
+      console.warn("[StudentApp] Speech timeout – forcing advance");
+      window.speechSynthesis.cancel();
+      setTextToSpeak("");
+      sentenceQueueRef.current = [];
+      speechCancelledRef.current = false;
+      // 模拟 speech end 行为
+      handleSpeechEnd();
+    }, 15000);
+  } else {
+    handleSpeechEnd();
+  }
+
+  shouldAdvance = false;
+} else if (action.type === "command") {
         const { name, args = {} } = action.payload;
 
         switch (name) {
@@ -623,12 +633,6 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
               );
               break;
             }
-            // If already attempted, do not block the script again.
-            // if (attemptedQuizIds.has(quizId)) {
-            //   console.log("meile")
-            //   advanceDelay = 50;
-            //   break;
-            // }
             // Always stop speaking and pause for the quiz popup
             window.speechSynthesis.cancel();
             setTextToSpeak("");
@@ -994,6 +998,8 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
 
       // 停止当前语音
       stopSpeaking();
+      // 重置取消标记，确保 resume 后的新语音不会被当作"被取消的语音"而跳过推进
+      speechCancelledRef.current = false;
 
       // 清理状态
       setInteractiveChoices(null);
@@ -1452,7 +1458,13 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
     // so each lesson has independent timeline.
     startLesson(lesson, true);
   };
-
+useEffect(() => {
+  return () => {
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+    }
+  };
+}, []);
   // Keep session alive across refresh without forcing reset to first sentence.
   useEffect(() => {
     if (!isSessionStarted || !currentLesson) return;
@@ -1686,8 +1698,14 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
             setInteractiveChoices(null);
             setPendingChoices(null);
             setMultiChoiceCorrectAnswers(null);
-            setSystemStatus("paused");
             forceAdvanceScript(1);
+            // 利用当前按钮点击手势激活音频上下文，避免浏览器自动播放限制导致长时间延迟
+            const dummy = new SpeechSynthesisUtterance("");
+            dummy.volume = 0;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(dummy);
+            needsProcessOnResumeRef.current = true;
+            setSystemStatus("playing");
           }}
         />
       )}
