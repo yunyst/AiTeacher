@@ -414,6 +414,16 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
       const nextSentence = sentenceQueueRef.current.shift()!;
       setTextToSpeak(nextSentence);
       setCaptionText(nextSentence);
+      // 为下一句设置动态超时，防止长句被截断
+      const nextTimeout = Math.max(15000, Math.ceil(nextSentence.length * 1000 / (3 * speechRate)) + 5000);
+      speechTimeoutRef.current = window.setTimeout(() => {
+        console.warn("[StudentApp] Speech timeout – forcing advance");
+        window.speechSynthesis.cancel();
+        setTextToSpeak("");
+        sentenceQueueRef.current = [];
+        speechCancelledRef.current = false;
+        handleSpeechEnd();
+      }, nextTimeout);
       return;
     }
 
@@ -448,7 +458,7 @@ export const StudentApp: React.FC<StudentAppProps> = ({ session, profile }) => {
         advanceScript(1);
       }
     }
-  }, [scriptIndex, systemStatus, advanceScript, lessonScript, pendingChoices]);
+  }, [scriptIndex, systemStatus, advanceScript, lessonScript, pendingChoices, speechRate]);
 
   const switchToQAMode = useCallback(() => {
     setSystemStatus("asking_question");
@@ -515,7 +525,9 @@ if (action.type === "speech") {
     if (speechTimeoutRef.current) {
       clearTimeout(speechTimeoutRef.current);
     }
-    // 设置 15 秒超时，防止 TTS 无响应
+    // 根据句子长度和语速动态计算超时时间，防止长句被截断
+    // 中文语音大约每秒3个字符（正常语速），加上5秒缓冲
+    const dynamicTimeout = Math.max(15000, Math.ceil(sentences[0].length * 1000 / (3 * speechRate)) + 5000);
     speechTimeoutRef.current = window.setTimeout(() => {
       console.warn("[StudentApp] Speech timeout – forcing advance");
       window.speechSynthesis.cancel();
@@ -524,7 +536,7 @@ if (action.type === "speech") {
       speechCancelledRef.current = false;
       // 模拟 speech end 行为
       handleSpeechEnd();
-    }, 15000);
+    }, dynamicTimeout);
   } else {
     handleSpeechEnd();
   }
@@ -677,6 +689,7 @@ if (action.type === "speech") {
       switchToQAMode,
       handleSpeechEnd,
       textToSpeak,
+      speechRate,
     ],
   );
 

@@ -149,19 +149,20 @@ const useAppStore = create<AppState>((set, get) => {
       );
 
       // Chrome workaround: Chrome silently stops speech synthesis after ~15 seconds.
-      // Periodically calling resume() keeps it alive.
+      // Periodically calling pause()+resume() keeps it alive.
       if ((window as any).__speechKeepAlive) {
         clearInterval((window as any).__speechKeepAlive);
       }
       (window as any).__speechKeepAlive = setInterval(() => {
-        if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
           window.speechSynthesis.resume();
-        } else if (!window.speechSynthesis.speaking) {
+        } else {
           // Speech has ended naturally or been cancelled; clean up
           clearInterval((window as any).__speechKeepAlive);
           (window as any).__speechKeepAlive = null;
         }
-      }, 10000); // Every 10 seconds
+      }, 5000); // Every 5 seconds to prevent Chrome from silently pausing
     },
   };
 });
