@@ -32,3 +32,8 @@ Gemini1.bat
 Gemini2.bat
 
 ignore
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
